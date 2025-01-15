@@ -1,0 +1,92 @@
+N/OS KERNEL DOCUMENTATION
+
+The kernel uses interrupts to provide a RPC-based API to
+processes. Once a "process" is crated, it can not be destroyed
+until the system is restarted.
+
+NOTE: All registers not used as inputs or outputs(obviously)
+    are to be saved across the kernel's software interrupts.
+
+DO SERVICE
+INT  0x2A
+IN: ax = pid, dx = sid, cx = message length,
+    es:bx = message pointer
+OUT: ax = 0 or 1, cx = len, es:bx = message pointer
+NOTES:
+    The DO SERVICE intterupt takes three arguments in the AX,
+    DX, CX, ES and BX registers. It returns data in the AX,
+    CX, ES and BX registers. It is N/OS' IPC implementation.
+INPUTS:
+*   AX contains the process id which refers to the process
+    that holds the service. The process id can be found with
+    FIND PID (int 0x2b) or by creating a new process with
+    CREATE PROCESS (int 0x2c).
+*   DX contains the service id which is an index into the
+    service_list word array. The service_list word array
+    contains a list of 16-bit pointers to services in the
+    process, and the pointer to the service_list word array
+    can be found in tXHEADER at the beginning of all process
+    images. DX must not be zero; indexes into the service_list
+    word array start at 1.
+*   CX contains the length in bytes of the message to be sent.
+*   ES:BX is a far pointer which points to the message buffer.
+OUTPUTS:
+*   AX is set to 1 if the service was sucessfully executed or
+    0 if not.
+*   CX is set to the length of the returned message buffer in
+    bytes.
+*   ES:BX is set to a far pointer pointing to the returned
+    message buffer.
+
+FIND PROCESS
+INT 0x2B
+IN: ax:dx:cx = process name
+OUT: ax = pid or 0
+NOTES:
+    The FIND PROCESS interrupt takes one argument held in the
+    AX, DX and CX registers. It returns data in the AX register.
+INPUTS:
+*   AX:DX:CX contains a 6-byte string where AX contains the
+    first two characters, BX the second two, and CX the last
+    two. This string correlates to the pname field in the
+    tXHEADER structure found at the start of all process images.
+OUTPUTS:
+*   AX is set to the corresponding process id, if it exists, and
+    0 upon failure.
+
+CREATE PROCESS
+INT 0x2C
+IN: ax = pid or 0, es:bx = executable image buffer
+OUT: ax = new pid or 0
+NOTES:
+    The CREATE PROCESS interrupt takes two arguments held in the
+    AX, ES and BX registers. It returns data in the AX register.
+INPUTS:
+*   AX contains a requested process id or 0 if no specific
+    process id is requested. Note that if the process id
+    specified in AX is already taken by another process, the
+    interrupt will fail and set AX to zero.
+*   ES:BX contains a pointer to the executable image of the
+    process in memory. The process must have a valid executable
+    header (tXHEADER) for the interrupt to return successful.
+OUTPUTS:
+*   AX is set to the new pid of the created process. If the 
+    process id was specified prior to calling the interrupt
+    and not 0 then this value will mirror it. If the process id
+    specified prior in the AX register was 0 then AX is set
+    to the new process id, calculated by it's offset into the
+    kernel's proclist table.
+
+EXEC PROCESS
+INT 0x2D
+IN: ax = pid
+OUT: nothing
+NOTES:
+    The EXEC PROCESS interrupt takes one argument held in the
+    AX register. It returns nothing. In fact, it SHOULD NOT
+    return at all, because it is effectively handing control
+    over to the target process, which will begin execution
+    following the 22-byte executable header.
+INPUTS:
+*   AX contains the process id to give control to.
+

@@ -1,0 +1,4 @@
+AS=nasm
+AS_OPTS=-I $(TOP)/include/
+OBJ=obj
+

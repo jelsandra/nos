@@ -1,0 +1,2 @@
+#!/bin/sh
+stat -c "%n %s" `find obj -name \*.o`
